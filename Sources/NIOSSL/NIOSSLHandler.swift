@@ -50,7 +50,11 @@ public class NIOSSLHandler : ChannelInboundHandler, ChannelOutboundHandler, Remo
         case closed
     }
 
-    private var state: ConnectionState = .idle
+    private var state: ConnectionState = .idle {
+        didSet {
+            print(self, state)
+        }
+    }
     private var connection: SSLConnection
     private var plaintextReadBuffer: ByteBuffer?
     private var bufferedActions: MarkedCircularBuffer<BufferedAction>
@@ -118,6 +122,7 @@ public class NIOSSLHandler : ChannelInboundHandler, ChannelOutboundHandler, Remo
         // state here. This function calls out to a lot of user code, so we need to make sure we're
         // keeping track of the state we're in properly before we do anything else.
         let oldState = state
+        print(self, "channel inactive")
         state = .closed
         let channelError: NIOSSLError
 
@@ -148,6 +153,7 @@ public class NIOSSLHandler : ChannelInboundHandler, ChannelOutboundHandler, Remo
             // these writes.
             channelError = NIOSSLError.uncleanShutdown
         }
+        // TODO: closeOutputPromise here?
         let shutdownPromise = self.shutdownPromise
         self.shutdownPromise = nil
         let closePromise = self.closePromise
@@ -285,9 +291,8 @@ public class NIOSSLHandler : ChannelInboundHandler, ChannelOutboundHandler, Remo
             self.flush(context: context)
             self.closeOutputPromise = promise
         case .active, .inputClosed:
-            // It may occur that we are still in the process of handshaking or additional verification. We'll let that happen.
-            // We flush all outstanding writes once the handshake step is complete and set our state to .outputClosed aftwerwards.
-            // This prevents any further writes to this channel.
+            // We need to begin processing closeOutput now. We can't fire the promise for a
+            // while though.
             self.state = .outputClosed
             self.closeOutputPromise = promise
             self.flush(context: context)

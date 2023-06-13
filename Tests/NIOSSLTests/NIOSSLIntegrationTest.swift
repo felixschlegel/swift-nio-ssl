@@ -763,6 +763,7 @@ class NIOSSLIntegrationTest: XCTestCase {
             connectingTo: serverChannel.localAddress!
         )
         defer {
+            print("About to close client")
             XCTAssertNoThrow(try clientChannel.close().wait())
         }
         XCTAssertNoThrow(try clientChannel.setOption(ChannelOptions.allowRemoteHalfClosure, value: true).wait())
